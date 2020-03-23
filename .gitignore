@@ -1,0 +1,14 @@
+# Workspace files
+.vscode
+
+# Generated files
+*.htm
+*.txt
+*.docx
+
+# Built files
+dist
+build
+__pycache__
+*.spec
+*.exe
