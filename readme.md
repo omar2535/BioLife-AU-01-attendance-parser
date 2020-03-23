@@ -40,9 +40,13 @@ Be sure to have auto-py-to-exe installed and also have the modules installed on 
 auto-py-to-exe
 ```
 
+Executable files will be stored in the `output` directory
+
 ### Linux binary:
 Be sure to first have `pyinstaller` installed before trying to build the project
 Check out the pyinstaller docs for more info [Pyinstaller docs](https://pyinstaller.readthedocs.io/en/stable/)
 ```sh
 sudo pyinstaller --onefile ./attendance_<file_type>_parser.py
 ```
+
+Binary files will be stored in the `dist` directory
