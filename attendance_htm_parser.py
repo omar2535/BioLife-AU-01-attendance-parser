@@ -18,7 +18,7 @@ def main():
     os.chdir('.')
     for attendance_sheet in glob.glob('*.htm'):
         print(f"*** Starting to parse {attendance_sheet} ***")
-        file_name = "./attendance.htm"
+        file_name = attendance_sheet
 
         # open file for reading and parse with bs4
         html = open(file_name, 'rb').read()
@@ -32,7 +32,7 @@ def main():
         title = all_p_elements[0].string.replace(u'\xa0', u' ')
         company_name = all_p_elements[1].string.replace(u'\xa0', u' ')
         date_range = all_p_elements[2].string.replace(u'\xa0', u' ')
-        file_name = re.sub("[^0-9\-]", "", date_range)
+        output_file_name = re.sub("[^0-9\-]", "", date_range)
         tables = html.findAll('table')
         employees = []
 
@@ -46,7 +46,7 @@ def main():
             calculate_hours(employee, starting_hours_for_overtime)
 
         # breakpoint()
-        write_to_file(f"{file_name}_htm", employees)
+        write_to_file(f"{output_file_name}_htm", employees)
     print("End program")
 
 
