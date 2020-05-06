@@ -16,7 +16,7 @@ def main():
 
     # collect files
     os.chdir('.')
-    for attendance_sheet in glob.glob('*.htm'):
+    for attendance_sheet in glob.glob('*.htm*'):
         print(f"*** Starting to parse {attendance_sheet} ***")
         file_name = attendance_sheet
 
@@ -109,7 +109,9 @@ def calculate_hours(employee, overtime_hours_min=8):
         # error handling if didn't work or forgot to sign in/out
         if(len(log) == 0):
             continue
-        if(len(log) == 1):
+        if(len(log) == 1 and log[0] == ''):
+            continue
+        elif(len(log) == 1):
             print(f"{employee['name']} forgot to sign-in or out on {date}")
             review[date] = log
             continue
