@@ -6,9 +6,9 @@ To get it running, make sure to have the following python packages:
 - html5lib
 
 ```sh
-python3.7 -m pip install python-docx
-python3.7 -m pip install bs4
-python3.7 -m pip install html5lib
+python3.8 -m pip install python-docx
+python3.8 -m pip install bs4
+python3.8 -m pip install html5lib
 ```
 
 ## Example usage:
@@ -18,7 +18,7 @@ python3.7 -m pip install html5lib
 Place docx file inside same directory as script, then run
 
 ```sh
-python3.7 attendance_docx_parser.py
+python3.8 attendance_docx_parser.py
 ```
 
 ### HTML file
@@ -26,7 +26,7 @@ python3.7 attendance_docx_parser.py
 Place htm file inside sasme directory as script, then run
 
 ```sh
-python3.7 attendance_htm_parser.py
+python3.8 attendance_htm_parser.py
 ```
 
 ## Building the project
