@@ -12,3 +12,7 @@ build
 __pycache__
 *.spec
 *.exe
+
+# Output files
+previous_files/
+previous_output/
