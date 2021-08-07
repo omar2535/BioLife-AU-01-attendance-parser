@@ -45,7 +45,7 @@ def main():
         for employee in employees:
             calculate_hours(employee, starting_hours_for_overtime)
 
-        # breakpoint()
+        breakpoint()
         write_to_file(f"{output_file_name}_htm", employees)
     print("End program")
 
@@ -64,6 +64,7 @@ def parse_employee_tables(table):
         u'\xa0', u' ').split()[1].split(':')[1]
     employee['name'] = name
     employee['attendance'] = {}
+    employee['stats'] = {}
 
     time_tables = table.findAll('tr')[1:]
     if(len(time_tables) % 2 != 0):
@@ -115,9 +116,14 @@ def calculate_hours(employee, overtime_hours_min=8):
             print(f"{employee['name']} forgot to sign-in or out on {date}")
             review[date] = log
             continue
-        # start calculating hours
-        start_time = datetime.strptime(log[0], '%H:%M')
-        end_time = datetime.strptime(log[1], '%H:%M')
+        
+        # Get the first time and the last time of the log
+        start_log = log[0]
+        end_log = log[len(log) - 1]
+
+        # Start calculating logs
+        start_time = datetime.strptime(start_log, '%H:%M')
+        end_time = datetime.strptime(end_log, '%H:%M')
         hours_worked = (end_time - start_time).total_seconds() / 3600
         overtime_hours_worked = 0
         if(hours_worked - overtime_hours_min > 0):
@@ -125,6 +131,16 @@ def calculate_hours(employee, overtime_hours_min=8):
             regular_hours_worked = overtime_hours_min
         else:
             regular_hours_worked = hours_worked
+        
+        # Store for visibility purposes
+        # breakpoint()
+        employee['stats'][date] = {}
+        employee['stats'][date]['hours_worked'] = hours_worked
+        employee['stats'][date]['regular_hours_worked'] = regular_hours_worked
+        employee['stats'][date]['overtime_hours_worked'] = overtime_hours_worked
+        employee['stats'][date]['overtime_minutes_worked'] = overtime_hours_worked * 60
+        
+        # Calculate running total
         num_hours_worked_total += hours_worked
         num_overtime_hours_worked += overtime_hours_worked
         num_regular_hours_worked += regular_hours_worked
