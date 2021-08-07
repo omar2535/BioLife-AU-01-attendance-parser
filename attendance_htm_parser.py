@@ -45,7 +45,7 @@ def main():
         for employee in employees:
             calculate_hours(employee, starting_hours_for_overtime)
 
-        breakpoint()
+        # breakpoint()
         write_to_file(f"{output_file_name}_htm", employees)
     print("End program")
 
