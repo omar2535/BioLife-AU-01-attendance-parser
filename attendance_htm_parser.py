@@ -4,6 +4,7 @@ import pprint
 import glob
 import os
 import re
+import json
 from datetime import datetime
 from bs4 import BeautifulSoup
 
@@ -32,7 +33,11 @@ def main():
         title = all_p_elements[0].string.replace(u'\xa0', u' ')
         company_name = all_p_elements[1].string.replace(u'\xa0', u' ')
         date_range = all_p_elements[2].string.replace(u'\xa0', u' ')
-        output_file_name = re.sub("[^0-9\-]", "", date_range)
+        
+        # Define output file name
+        output_file_name = get_output_filename(date_range)
+
+        # Actual parsing begin
         tables = html.findAll('table')
         employees = []
 
@@ -40,13 +45,13 @@ def main():
         for table in tables:
             employees.append(parse_employee_tables(table))
 
-        # breakpoint()
-
+        # Actual calculations begin!
         for employee in employees:
             calculate_hours(employee, starting_hours_for_overtime)
-
-        # breakpoint()
-        write_to_file(f"{output_file_name}_htm", employees)
+        
+        # Write to output files
+        write_to_file(f"{output_file_name}_calculations", employees)
+        write_debug_file(f"{output_file_name}_debug", employees)
     print("End program")
 
 
@@ -60,8 +65,7 @@ def parse_employee_tables(table):
     dates_array = []
     times_array = []
     # Parse name
-    name = table.findAll('p')[1].string.replace(
-        u'\xa0', u' ').split()[1].split(':')[1]
+    name = table.findAll('p')[1].string.replace(u'\xa0', u' ').split()[1].split(':')[1]
     employee['name'] = name
     employee['attendance'] = {}
     employee['stats'] = {}
@@ -168,6 +172,18 @@ def write_to_file(file_name, employees):
         file.write(f"\n\n")
     print(f"COMPLETE: {file_name}.txt")
 
+def write_debug_file(output_file_name, employees):
+    with open(f"{output_file_name}.json", 'w') as fout:
+        json.dump(employees , fout, ensure_ascii=False)
+
+# Assumes this script is always running after the month being parsed has passed
+def get_output_filename(date_range):
+    month_string = re.sub("[^0-9\-]", "", date_range)[0:2]
+    if int(month_string) == 12:
+        file_name = f"{str(datetime.now().year)-1}-{month_string}"
+    else:
+        file_name = f"{str(datetime.now().year)}-{month_string}"
+    return file_name
 
 # run main if this is called by itself
 if __name__ == "__main__":
