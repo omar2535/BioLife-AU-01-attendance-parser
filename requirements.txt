@@ -1,7 +1,7 @@
 beautifulsoup4==4.9.1
 bs4==0.0.1
 html5lib==1.1
-lxml==4.6.3
+lxml==4.6.5
 python-docx==0.8.10
 six==1.15.0
 soupsieve==2.0.1
