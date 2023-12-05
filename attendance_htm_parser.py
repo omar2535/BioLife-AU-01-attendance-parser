@@ -33,7 +33,7 @@ def main():
         title = all_p_elements[0].string.replace(u'\xa0', u' ')
         company_name = all_p_elements[1].string.replace(u'\xa0', u' ')
         date_range = all_p_elements[2].string.replace(u'\xa0', u' ')
-        
+
         # Define output file name
         output_file_name = get_output_filename(date_range)
 

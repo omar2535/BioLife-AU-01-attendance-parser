@@ -17,3 +17,5 @@ __pycache__
 previous_files/
 previous_output/
 previous_debug_files/
+
+.venv/
