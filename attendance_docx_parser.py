@@ -1,11 +1,10 @@
 import docx
-import pdb
 import glob
 import os
 import re
 from datetime import datetime
 
-## SET THIS BEFORE USING PROGRAM!
+# SET THIS BEFORE USING PROGRAM!
 starting_hours_for_overtime = 8
 
 

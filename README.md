@@ -1,6 +1,7 @@
 # Attendance parser for an old version of fingerprint scanning clock in systems
 
 To get it running, make sure to have the following python packages:
+
 - bs4
 - docx
 - html5lib
@@ -11,7 +12,7 @@ python3.8 -m pip install bs4
 python3.8 -m pip install html5lib
 ```
 
-## Example usage:
+## Example usage
 
 ### Word file
 
@@ -33,7 +34,8 @@ python3.8 attendance_htm_parser.py
 
 Building the project to the respective operating systems
 
-### Exe files:
+### Exe files
+
 Be sure to have auto-py-to-exe installed and also have the modules installed on the windows machine
 
 ```sh
@@ -42,9 +44,11 @@ auto-py-to-exe
 
 Executable files will be stored in the `output` directory
 
-### Linux binary:
+### Linux binary
+
 Be sure to first have `pyinstaller` installed before trying to build the project
 Check out the pyinstaller docs for more info [Pyinstaller docs](https://pyinstaller.readthedocs.io/en/stable/)
+
 ```sh
 sudo pyinstaller --onefile ./attendance_<file_type>_parser.py
 ```

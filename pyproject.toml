@@ -1,0 +1,11 @@
+[project]
+name = "biolife-au-01-attendance-parser"
+version = "0.1.0"
+description = "Parser for timecard sheets on the BioLife AU-01 machine"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "lxml>=5.4.0",
+    "python-docx>=1.1.2",
+]

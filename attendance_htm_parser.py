@@ -1,6 +1,3 @@
-import codecs
-import pdb
-import pprint
 import glob
 import os
 import re
@@ -48,7 +45,7 @@ def main():
         # Actual calculations begin!
         for employee in employees:
             calculate_hours(employee, starting_hours_for_overtime)
-        
+
         # Write to output files
         write_to_file(f"{output_file_name}_calculations", employees)
         write_debug_file(f"{output_file_name}_debug", employees)
@@ -120,7 +117,7 @@ def calculate_hours(employee, overtime_hours_min=8):
             print(f"{employee['name']} forgot to sign-in or out on {date}")
             review[date] = log
             continue
-        
+
         # Get the first time and the last time of the log
         start_log = log[0]
         end_log = log[len(log) - 1]
@@ -135,7 +132,7 @@ def calculate_hours(employee, overtime_hours_min=8):
             regular_hours_worked = overtime_hours_min
         else:
             regular_hours_worked = hours_worked
-        
+
         # Store for visibility purposes
         # breakpoint()
         employee['stats'][date] = {}
@@ -143,7 +140,7 @@ def calculate_hours(employee, overtime_hours_min=8):
         employee['stats'][date]['regular_hours_worked'] = regular_hours_worked
         employee['stats'][date]['overtime_hours_worked'] = overtime_hours_worked
         employee['stats'][date]['overtime_minutes_worked'] = overtime_hours_worked * 60
-        
+
         # Calculate running total
         num_hours_worked_total += hours_worked
         num_overtime_hours_worked += overtime_hours_worked
@@ -172,9 +169,11 @@ def write_to_file(file_name, employees):
         file.write(f"\n\n")
     print(f"COMPLETE: {file_name}.txt")
 
+
 def write_debug_file(output_file_name, employees):
     with open(f"{output_file_name}.json", 'w') as fout:
         json.dump(employees , fout, ensure_ascii=False)
+
 
 # Assumes this script is always running after the month being parsed has passed
 def get_output_filename(date_range):
@@ -184,6 +183,7 @@ def get_output_filename(date_range):
     else:
         file_name = f"{str(datetime.now().year)}-{month_string}"
     return file_name
+
 
 # run main if this is called by itself
 if __name__ == "__main__":
