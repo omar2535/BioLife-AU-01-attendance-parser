@@ -26,7 +26,7 @@ def main():
         # <p> Title </p>
         # <p> Company name </p>
         # <p> Date </p>
-        all_p_elements = html.findAll('p')
+        all_p_elements = html.find_all('p')
         title = all_p_elements[0].string.replace(u'\xa0', u' ')
         company_name = all_p_elements[1].string.replace(u'\xa0', u' ')
         date_range = all_p_elements[2].string.replace(u'\xa0', u' ')
@@ -35,7 +35,7 @@ def main():
         output_file_name = get_output_filename(date_range)
 
         # Actual parsing begin
-        tables = html.findAll('table')
+        tables = html.find_all('table')
         employees = []
 
         # parse table
@@ -62,12 +62,12 @@ def parse_employee_tables(table):
     dates_array = []
     times_array = []
     # Parse name
-    name = table.findAll('p')[1].string.replace(u'\xa0', u' ').split()[1].split(':')[1]
+    name = table.find_all('p')[1].string.replace(u'\xa0', u' ').split()[1].split(':')[1]
     employee['name'] = name
     employee['attendance'] = {}
     employee['stats'] = {}
 
-    time_tables = table.findAll('tr')[1:]
+    time_tables = table.find_all('tr')[1:]
     if(len(time_tables) % 2 != 0):
         raise "time table is broken. Check dataset. Non-matching table rows"
         return False
@@ -75,9 +75,9 @@ def parse_employee_tables(table):
         for i in range(int(len(time_tables)/2)):
             # dates as an array
             dates = [*map(lambda ele: ele.string,
-                          time_tables[2*i].findAll('td')[1:])]
+                          time_tables[2*i].find_all('td')[1:])]
             dates_array += dates
-            check_in_times = time_tables[2*i+1].findAll('td')[1:]
+            check_in_times = time_tables[2*i+1].find_all('td')[1:]
             for times in check_in_times:
                 times_contents = times.contents
                 # apply filters on \xa0 being represented for spaces, \n on all the last times, and all white spaces
