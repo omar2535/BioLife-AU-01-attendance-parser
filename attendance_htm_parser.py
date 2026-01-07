@@ -179,7 +179,7 @@ def write_debug_file(output_file_name, employees):
 def get_output_filename(date_range):
     month_string = re.sub("[^0-9\-]", "", date_range)[0:2]
     if int(month_string) == 12:
-        file_name = f"{str(datetime.now().year)-1}-{month_string}"
+        file_name = f"{str(datetime.now().year - 1)}-{month_string}"
     else:
         file_name = f"{str(datetime.now().year)}-{month_string}"
     return file_name
