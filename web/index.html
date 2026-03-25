@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Attendance Parser</title>
+  <style>
+/* ── Reset & Base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --color-bg:         #f5f6fa;
+  --color-surface:    #ffffff;
+  --color-border:     #dde1ea;
+  --color-primary:    #4a6cf7;
+  --color-primary-dk: #3655d4;
+  --color-text:       #1e2130;
+  --color-muted:      #6b7280;
+
+  --color-normal:    #e8f5e9;
+  --color-normal-bd: #66bb6a;
+  --color-missing:   #ffebee;
+  --color-missing-bd:#ef5350;
+  --color-duplicate: #fff8e1;
+  --color-duplicate-bd:#ffa726;
+  --color-empty:     #f3f4f6;
+  --color-empty-bd:  #d1d5db;
+
+  --radius: 8px;
+  --shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+.page-header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.page-header .logo { font-weight: 700; font-size: 1.05rem; color: var(--color-primary); }
+.page-header .subtitle { font-size: .85rem; color: var(--color-muted); }
+
+.main-content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.upload-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding-top: 2rem;
+}
+
+#drop-zone {
+  width: 100%;
+  max-width: 520px;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  display: block;
+  transition: border-color .2s, background .2s;
+}
+#drop-zone:hover, #drop-zone.drag-over {
+  border-color: var(--color-primary);
+  background: #eef1ff;
+}
+.drop-icon { font-size: 2.5rem; margin-bottom: .75rem; }
+.drop-title { font-weight: 600; font-size: 1.1rem; margin-bottom: .35rem; }
+.drop-sub { color: var(--color-muted); font-size: .9rem; }
+
+.config-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: var(--shadow);
+}
+.config-panel h3 { font-size: .95rem; font-weight: 600; margin-bottom: 1rem; }
+.config-row { display: flex; align-items: center; gap: .75rem; margin-bottom: .75rem; }
+.config-row label { flex: 1; font-size: .9rem; }
+.config-row input[type="number"] {
+  width: 80px; padding: .35rem .5rem;
+  border: 1px solid var(--color-border); border-radius: 4px; font-size: .9rem;
+}
+.config-note { font-size: .78rem; color: var(--color-muted); margin-top: .25rem; line-height: 1.5; }
+
+.banner { padding: .75rem 1rem; border-radius: var(--radius); font-size: .9rem; font-weight: 500; margin-bottom: 1rem; }
+.banner-warning { background: #fff3cd; color: #7d4a00; border: 1px solid #ffc107; }
+.banner-ok      { background: #d4edda; color: #155724; border: 1px solid #28a745; }
+
+.section-title { font-size: 1.15rem; font-weight: 700; margin-bottom: .25rem; }
+.section-sub   { color: var(--color-muted); font-size: .88rem; margin-bottom: 1.25rem; }
+
+#review-meta { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; margin-bottom: 1.25rem; font-size: .88rem; color: var(--color-muted); }
+#review-meta .meta-item strong { color: var(--color-text); }
+
+.legend { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+.legend-item { display: flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--color-muted); }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid; flex-shrink: 0; }
+.legend-dot.normal    { background: var(--color-normal);    border-color: var(--color-normal-bd); }
+.legend-dot.missing   { background: var(--color-missing);   border-color: var(--color-missing-bd); }
+.legend-dot.duplicate { background: var(--color-duplicate); border-color: var(--color-duplicate-bd); }
+.legend-dot.empty     { background: var(--color-empty);     border-color: var(--color-empty-bd); }
+
+.employee-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); margin-bottom: 1.25rem; box-shadow: var(--shadow); overflow: hidden; }
+.employee-header { display: flex; align-items: center; gap: .75rem; padding: .85rem 1.25rem; background: #fafbff; border-bottom: 1px solid var(--color-border); }
+.employee-name { font-weight: 600; font-size: 1rem; }
+.issue-badge { background: #fff3cd; color: #7d4a00; border: 1px solid #ffc107; border-radius: 999px; font-size: .75rem; font-weight: 600; padding: .15rem .6rem; }
+.ok-badge    { background: #d4edda; color: #155724; border: 1px solid #28a745; border-radius: 999px; font-size: .75rem; font-weight: 600; padding: .15rem .6rem; }
+
+.attendance-grid { display: flex; flex-wrap: wrap; gap: .5rem; padding: 1rem 1.25rem; }
+
+.day-cell { border-radius: 6px; border: 1.5px solid; padding: .5rem .6rem; min-width: 90px; font-size: .8rem; transition: box-shadow .15s; }
+.day-cell:hover { box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.day-cell.status-normal    { background: var(--color-normal);    border-color: var(--color-normal-bd); }
+.day-cell.status-missing   { background: var(--color-missing);   border-color: var(--color-missing-bd); }
+.day-cell.status-duplicate { background: var(--color-duplicate); border-color: var(--color-duplicate-bd); }
+.day-cell.status-empty     { background: var(--color-empty);     border-color: var(--color-empty-bd); }
+
+.day-label { font-weight: 600; margin-bottom: .35rem; font-size: .82rem; }
+.day-times { display: flex; flex-direction: column; gap: .3rem; }
+.no-data { color: var(--color-muted); font-size: .8rem; }
+
+.time-row { display: flex; align-items: center; gap: .3rem; }
+.time-label { font-size: .72rem; color: var(--color-muted); width: 36px; flex-shrink: 0; }
+.time-input { width: 60px; padding: .2rem .35rem; border: 1px solid var(--color-border); border-radius: 4px; font-size: .78rem; font-family: 'Courier New', monospace; }
+.time-input:focus { outline: 2px solid var(--color-primary); border-color: transparent; }
+
+.missing-hint   { font-size: .72rem; font-weight: 600; margin-bottom: .3rem; color: #c62828; }
+.duplicate-hint { font-size: .72rem; font-weight: 600; margin-bottom: .3rem; color: #e65100; }
+
+.remove-btn { background: none; border: none; color: #c62828; cursor: pointer; font-size: .75rem; padding: 0 .2rem; line-height: 1; opacity: .7; }
+.remove-btn:hover { opacity: 1; }
+
+.btn { display: inline-flex; align-items: center; gap: .4rem; padding: .6rem 1.25rem; border-radius: var(--radius); font-size: .9rem; font-weight: 600; border: none; cursor: pointer; transition: background .15s, transform .1s; }
+.btn:active { transform: translateY(1px); }
+.btn-primary   { background: var(--color-primary); color: #fff; }
+.btn-primary:hover { background: var(--color-primary-dk); }
+.btn-secondary { background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); }
+.btn-secondary:hover { background: var(--color-bg); }
+
+.action-bar { display: flex; align-items: center; gap: .75rem; padding-top: 1rem; border-top: 1px solid var(--color-border); margin-top: 1rem; }
+
+.results-table-wrap { overflow-x: auto; margin-bottom: 1.5rem; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: .65rem 1rem; border-bottom: 1px solid var(--color-border); }
+th { background: #fafbff; font-weight: 600; font-size: .82rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: .03em; }
+tr:hover td { background: #fafbff; }
+.warn-text { color: #c62828; font-size: .82rem; }
+
+[hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <header class="page-header">
+    <span class="logo">🗂 Attendance Parser</span>
+    <span class="subtitle">Fingerprint clock-in timesheet processor</span>
+  </header>
+
+  <main class="main-content">
+
+    <!-- ── Upload Section ──────────────────────────────────────────────────── -->
+    <section id="upload-section">
+      <div class="upload-wrapper">
+
+        <label id="drop-zone" for="file-input">
+          <div class="drop-icon">📂</div>
+          <div class="drop-title">Drop your .htm file here</div>
+          <div class="drop-sub">or click to browse</div>
+        </label>
+        <input type="file" id="file-input" accept=".htm,.html"
+               style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" />
+
+        <div class="config-panel">
+          <h3>⚙ Configuration</h3>
+
+          <div class="config-row">
+            <label for="overtime-threshold">Overtime threshold (hours/day)</label>
+            <input type="number" id="overtime-threshold" value="8" min="0" max="24" step="0.5" />
+          </div>
+          <p class="config-note">Hours worked beyond this threshold count as overtime.<br />Default: <strong>8h</strong> (matches the original script).</p>
+
+          <div class="config-row">
+            <label for="duplicate-threshold">Duplicate punch threshold (minutes)</label>
+            <input type="number" id="duplicate-threshold" value="10" min="1" max="60" step="1" />
+          </div>
+          <p class="config-note">If 2 time entries are within this many minutes of each other they are flagged as duplicates (e.g. two clock-ins with no clock-out).<br />Default: <strong>10 min</strong>.</p>
+
+          <hr style="border:none;border-top:1px solid var(--color-border);margin:.75rem 0" />
+          <p class="config-note">
+            <strong>How time entries are interpreted:</strong><br />
+            • <strong>0 entries</strong> — day off, skipped<br />
+            • <strong>1 entry</strong> — missing clock-in <em>or</em> clock-out, flagged<br />
+            • <strong>2 entries (far apart)</strong> — normal (first = clock-in, last = clock-out)<br />
+            • <strong>2 entries (close together)</strong> — duplicate scans, flagged<br />
+            • <strong>3+ entries</strong> — duplicate scans, flagged; first = clock-in, last = clock-out
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Review Section ──────────────────────────────────────────────────── -->
+    <section id="review-section" hidden>
+      <h2 class="section-title">Review Attendance Data</h2>
+      <p class="section-sub">Check highlighted entries. Fill in missing times or remove duplicate punches, then click <strong>Generate</strong>.</p>
+
+      <div id="review-meta"></div>
+
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot normal"></span>Normal</span>
+        <span class="legend-item"><span class="legend-dot missing"></span>Missing punch</span>
+        <span class="legend-item"><span class="legend-dot duplicate"></span>Duplicate punches</span>
+        <span class="legend-item"><span class="legend-dot empty"></span>Day off</span>
+      </div>
+
+      <div id="issue-banner" class="banner banner-ok"></div>
+      <div id="review-container"></div>
+
+      <div class="action-bar">
+        <button id="generate-btn" class="btn btn-primary">⚡ Generate Totals</button>
+        <button id="change-file-btn" class="btn btn-secondary">← Change File</button>
+      </div>
+    </section>
+
+    <!-- ── Results Section ──────────────────────────────────────────────────── -->
+    <section id="results-section" hidden>
+      <h2 class="section-title">Results</h2>
+      <p class="section-sub">Hours calculated per employee based on reviewed attendance data.</p>
+
+      <div class="results-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Total Hours</th>
+              <th>Regular Hours</th>
+              <th>Overtime Hours</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+
+      <div class="action-bar">
+        <button id="back-btn" class="btn btn-secondary">← Back to Review</button>
+        <button id="new-file-btn" class="btn btn-secondary">📂 Load New File</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+// ══════════════════════════════════════════════════════════════════════════════
+// PARSER — BIG5-encoded HTM attendance files
+// ══════════════════════════════════════════════════════════════════════════════
+
+function decodeBig5(buffer) {
+  return new TextDecoder('big5').decode(buffer);
+}
+
+function timeStrToMinutes(t) {
+  var parts = t.split(':');
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
+
+function classifyTimes(times, dupThresholdMin) {
+  if (dupThresholdMin === undefined) dupThresholdMin = 10;
+  var ne = times.filter(function(t) { return t !== ''; });
+  if (ne.length === 0) return 'empty';
+  if (ne.length === 1) return 'missing';
+  if (ne.length > 2)   return 'duplicate';
+  // 2 entries — check proximity
+  var gap = Math.abs(timeStrToMinutes(ne[1]) - timeStrToMinutes(ne[0]));
+  return gap <= dupThresholdMin ? 'duplicate' : 'normal';
+}
+
+function parseEmployeeTable(table, dupThresholdMin) {
+  var allP = table.querySelectorAll('p');
+  var headerText = allP[1] ? allP[1].textContent.replace(/\u00a0/g, ' ').trim() : '';
+  var nameMatch = headerText.match(/姓名[:：]\s*(\S+)/);
+  var name = nameMatch ? nameMatch[1] : headerText;
+
+  var employee = { name: name, attendance: {} };
+  var rows = Array.prototype.slice.call(table.querySelectorAll('tr'), 1);
+
+  for (var i = 0; i + 1 < rows.length; i += 2) {
+    var dateRow = rows[i];
+    var timeRow = rows[i + 1];
+    if (!dateRow || !timeRow) continue;
+
+    var dateCells = Array.prototype.slice.call(dateRow.querySelectorAll('td'), 1);
+    var timeCells = Array.prototype.slice.call(timeRow.querySelectorAll('td'), 1);
+
+    dateCells.forEach(function(dateCell, idx) {
+      var dateStr = dateCell.textContent.replace(/\u00a0/g, ' ').trim();
+      if (!dateStr) return;
+
+      var timeCell = timeCells[idx];
+      if (!timeCell) {
+        employee.attendance[dateStr] = { times: [], status: 'empty' };
+        return;
+      }
+
+      var rawTimes = [];
+      timeCell.childNodes.forEach(function(node) {
+        if (node.nodeType === 3) { // TEXT_NODE
+          var val = node.textContent.replace(/\u00a0/g, '').replace(/\n/g, '').trim();
+          if (val) rawTimes.push(val);
+        }
+      });
+
+      var status = classifyTimes(rawTimes, dupThresholdMin);
+      employee.attendance[dateStr] = {
+        times: rawTimes.filter(function(t) { return t !== ''; }),
+        status: status
+      };
+    });
+  }
+  return employee;
+}
+
+function parseAttendanceFile(buffer, dupThresholdMin) {
+  if (dupThresholdMin === undefined) dupThresholdMin = 10;
+  var html = decodeBig5(buffer);
+  var parser = new DOMParser();
+  var doc = parser.parseFromString(html, 'text/html');
+
+  var allP = doc.querySelectorAll('p');
+  var title       = allP[0] ? allP[0].textContent.replace(/\u00a0/g, ' ').trim() : '';
+  var companyName = allP[1] ? allP[1].textContent.replace(/\u00a0/g, ' ').trim() : '';
+  var dateRange   = allP[2] ? allP[2].textContent.replace(/\u00a0/g, ' ').trim() : '';
+
+  var tables = doc.querySelectorAll('table');
+  var employees = Array.prototype.map.call(tables, function(t) {
+    return parseEmployeeTable(t, dupThresholdMin);
+  });
+
+  return { title: title, companyName: companyName, dateRange: dateRange, employees: employees };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CALCULATOR
+// ══════════════════════════════════════════════════════════════════════════════
+
+function timeToMinutes(t) {
+  var parts = t.split(':');
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
+
+function calcDayHours(clockIn, clockOut, overtimeThreshold) {
+  var hoursWorked = (timeToMinutes(clockOut) - timeToMinutes(clockIn)) / 60;
+  var regularHours, overtimeHours;
+  if (hoursWorked - overtimeThreshold > 0) {
+    overtimeHours = hoursWorked - overtimeThreshold;
+    regularHours  = overtimeThreshold;
+  } else {
+    regularHours  = Math.max(0, hoursWorked);
+    overtimeHours = 0;
+  }
+  return { hoursWorked: hoursWorked, regularHours: regularHours, overtimeHours: overtimeHours };
+}
+
+function calculateEmployeeHours(name, attendance, overtimeThreshold) {
+  if (overtimeThreshold === undefined) overtimeThreshold = 8;
+  var totalHours = 0, totalRegular = 0, totalOvertime = 0;
+  var dayStats = {};
+
+  Object.keys(attendance).forEach(function(date) {
+    var entry = attendance[date];
+    var times = entry.times.filter(function(t) { return t.trim() !== ''; });
+
+    if (times.length === 0) {
+      dayStats[date] = { skipped: true, skipReason: 'empty' };
+      return;
+    }
+    if (times.length === 1) {
+      dayStats[date] = { clockIn: times[0], clockOut: null, skipped: true, skipReason: 'missing_punch' };
+      return;
+    }
+
+    var clockIn  = times[0];
+    var clockOut = times[times.length - 1];
+    var d = calcDayHours(clockIn, clockOut, overtimeThreshold);
+
+    dayStats[date] = {
+      clockIn: clockIn, clockOut: clockOut,
+      hoursWorked: d.hoursWorked, regularHours: d.regularHours,
+      overtimeHours: d.overtimeHours, skipped: false
+    };
+
+    totalHours   += d.hoursWorked;
+    totalRegular += d.regularHours;
+    totalOvertime+= d.overtimeHours;
+  });
+
+  return { name: name, totalHours: totalHours, regularHours: totalRegular, overtimeHours: totalOvertime, dayStats: dayStats };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// APP — UI orchestration
+// ══════════════════════════════════════════════════════════════════════════════
+
+var parsedData = null;
+
+var uploadSection   = document.getElementById('upload-section');
+var reviewSection   = document.getElementById('review-section');
+var resultsSection  = document.getElementById('results-section');
+var fileInput       = document.getElementById('file-input');
+var dropZone        = document.getElementById('drop-zone');
+var overtimeInput   = document.getElementById('overtime-threshold');
+var duplicateInput  = document.getElementById('duplicate-threshold');
+var reviewContainer = document.getElementById('review-container');
+var reviewMeta      = document.getElementById('review-meta');
+var issueBanner     = document.getElementById('issue-banner');
+var generateBtn     = document.getElementById('generate-btn');
+var resultsBody     = document.getElementById('results-body');
+var backBtn         = document.getElementById('back-btn');
+var changeFileBtn   = document.getElementById('change-file-btn');
+var newFileBtn      = document.getElementById('new-file-btn');
+
+// Drag-and-drop
+dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('drag-over'); });
+dropZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  var file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+});
+
+fileInput.addEventListener('change', function() {
+  if (fileInput.files[0]) processFile(fileInput.files[0]);
+});
+
+function processFile(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var dupThreshold = parseFloat(duplicateInput.value) || 10;
+    try {
+      parsedData = parseAttendanceFile(e.target.result, dupThreshold);
+      renderReview(parsedData);
+      showSection(reviewSection);
+    } catch (err) {
+      alert('Failed to parse file: ' + (err.message || err));
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Review ────────────────────────────────────────────────────────────────────
+
+function renderReview(data) {
+  reviewMeta.innerHTML =
+    '<span class="meta-item"><strong>' + escHtml(data.title) + '</strong></span>' +
+    '<span class="meta-item">' + escHtml(data.companyName) + '</span>' +
+    '<span class="meta-item">' + escHtml(data.dateRange) + '</span>';
+
+  reviewContainer.innerHTML = '';
+  var totalIssues = 0;
+
+  data.employees.forEach(function(employee, empIdx) {
+    var issues = countIssues(employee.attendance);
+    totalIssues += issues;
+
+    var card = document.createElement('div');
+    card.className = 'employee-card';
+    card.innerHTML =
+      '<div class="employee-header">' +
+        '<span class="employee-name">' + escHtml(employee.name) + '</span>' +
+        (issues > 0
+          ? '<span class="issue-badge">' + issues + ' issue' + (issues > 1 ? 's' : '') + '</span>'
+          : '<span class="ok-badge">✓ OK</span>') +
+      '</div>' +
+      '<div class="attendance-grid" id="grid-' + empIdx + '"></div>';
+    reviewContainer.appendChild(card);
+    renderAttendanceGrid(card.querySelector('#grid-' + empIdx), employee.attendance, empIdx);
+  });
+
+  updateBanner(totalIssues, 'found');
+}
+
+function renderAttendanceGrid(container, attendance, empIdx) {
+  Object.keys(attendance).forEach(function(date) {
+    var entry = attendance[date];
+    var cell = document.createElement('div');
+    cell.className = 'day-cell status-' + entry.status;
+    cell.dataset.empIdx = empIdx;
+    cell.dataset.date = date;
+
+    var label = document.createElement('div');
+    label.className = 'day-label';
+    label.textContent = date;
+
+    var timesContainer = document.createElement('div');
+    timesContainer.className = 'day-times';
+
+    if (entry.status === 'empty') {
+      timesContainer.innerHTML = '<span class="no-data">—</span>';
+    } else {
+      renderTimeInputs(timesContainer, entry, empIdx, date);
+    }
+
+    cell.appendChild(label);
+    cell.appendChild(timesContainer);
+    container.appendChild(cell);
+  });
+}
+
+function renderTimeInputs(container, entry, empIdx, date) {
+  container.innerHTML = '';
+
+  if (entry.status === 'missing') {
+    var existingTime = entry.times[0];
+    var hint = document.createElement('div');
+    hint.className = 'missing-hint';
+    hint.textContent = '⚠ Missing punch';
+    container.appendChild(hint);
+
+    ['Clock-in', 'Clock-out'].forEach(function(labelText, idx) {
+      var wrapper = document.createElement('div');
+      wrapper.className = 'time-row';
+
+      var lbl = document.createElement('span');
+      lbl.className = 'time-label';
+      lbl.textContent = labelText + ':';
+
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'time-input';
+      input.placeholder = 'HH:MM';
+      input.value = idx === 0 ? existingTime : '';
+      input.dataset.empIdx = empIdx;
+      input.dataset.date = date;
+      input.dataset.timeIdx = idx;
+      input.addEventListener('change', onTimeChange);
+
+      wrapper.appendChild(lbl);
+      wrapper.appendChild(input);
+      container.appendChild(wrapper);
+    });
+  } else {
+    if (entry.status === 'duplicate') {
+      var dupHint = document.createElement('div');
+      dupHint.className = 'duplicate-hint';
+      dupHint.textContent = '⚠ ' + entry.times.length + ' punches — first = clock-in, last = clock-out';
+      container.appendChild(dupHint);
+    }
+
+    entry.times.forEach(function(time, idx) {
+      var isFirst = idx === 0;
+      var isLast  = idx === entry.times.length - 1;
+      container.appendChild(makeTimeRow(time, idx, isFirst, isLast, empIdx, date, entry));
+    });
+  }
+}
+
+function makeTimeRow(value, idx, isFirst, isLast, empIdx, date, entry) {
+  var wrapper = document.createElement('div');
+  wrapper.className = 'time-row';
+
+  var roleLabel = document.createElement('span');
+  roleLabel.className = 'time-label';
+  roleLabel.textContent = isFirst ? 'In:' : (isLast ? 'Out:' : '[' + idx + ']:');
+
+  var input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'time-input';
+  input.value = value;
+  input.placeholder = 'HH:MM';
+  input.dataset.empIdx = empIdx;
+  input.dataset.date = date;
+  input.dataset.timeIdx = idx;
+  input.addEventListener('change', onTimeChange);
+
+  wrapper.appendChild(roleLabel);
+  wrapper.appendChild(input);
+
+  if (entry.status === 'duplicate' && !isFirst && !isLast) {
+    var removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn';
+    removeBtn.title = 'Remove this entry';
+    removeBtn.textContent = '✕';
+    removeBtn.addEventListener('click', function() {
+      entry.times.splice(idx, 1);
+      entry.status = classifyTimesFromCount(entry.times.length);
+      var cell = document.querySelector('.day-cell[data-emp-idx="' + empIdx + '"][data-date="' + date + '"]');
+      if (cell) {
+        cell.className = 'day-cell status-' + entry.status;
+        renderTimeInputs(cell.querySelector('.day-times'), entry, empIdx, date);
+      }
+      refreshIssueBanner();
+    });
+    wrapper.appendChild(removeBtn);
+  }
+
+  return wrapper;
+}
+
+function classifyTimesFromCount(count) {
+  if (count === 0) return 'empty';
+  if (count === 1) return 'missing';
+  if (count > 2)   return 'duplicate';
+  return 'normal';
+}
+
+function onTimeChange(e) {
+  var empIdx  = e.target.dataset.empIdx;
+  var date    = e.target.dataset.date;
+  var entry   = parsedData.employees[Number(empIdx)].attendance[date];
+
+  var cell = document.querySelector('.day-cell[data-emp-idx="' + empIdx + '"][data-date="' + date + '"]');
+
+  if (entry.status === 'missing') {
+    if (cell) {
+      var inputs  = cell.querySelectorAll('.time-input');
+      var newTimes = Array.prototype.map.call(inputs, function(i) { return i.value.trim(); }).filter(Boolean);
+      entry.times  = newTimes;
+      entry.status = classifyTimesFromCount(newTimes.length);
+      cell.className = 'day-cell status-' + entry.status;
+    }
+  } else {
+    entry.times[Number(e.target.dataset.timeIdx)] = e.target.value.trim();
+    entry.status = classifyTimesFromCount(entry.times.filter(Boolean).length);
+    if (cell) cell.className = 'day-cell status-' + entry.status;
+  }
+
+  refreshIssueBanner();
+}
+
+function refreshIssueBanner() {
+  var totalIssues = 0;
+  parsedData.employees.forEach(function(emp, idx) {
+    var issues = countIssues(emp.attendance);
+    totalIssues += issues;
+    var card  = reviewContainer.children[idx];
+    if (!card) return;
+    var badge = card.querySelector('.issue-badge, .ok-badge');
+    if (badge) {
+      if (issues > 0) {
+        badge.className   = 'issue-badge';
+        badge.textContent = issues + ' issue' + (issues > 1 ? 's' : '');
+      } else {
+        badge.className   = 'ok-badge';
+        badge.textContent = '✓ OK';
+      }
+    }
+  });
+  updateBanner(totalIssues, 'remaining');
+}
+
+function updateBanner(count, word) {
+  if (count > 0) {
+    issueBanner.textContent = '⚠ ' + count + ' issue' + (count > 1 ? 's' : '') + ' ' + word + ' — please review highlighted entries before generating.';
+    issueBanner.className = 'banner banner-warning';
+  } else {
+    issueBanner.textContent = '✓ No issues. Ready to generate.';
+    issueBanner.className = 'banner banner-ok';
+  }
+}
+
+function countIssues(attendance) {
+  return Object.values(attendance).filter(function(e) {
+    return e.status === 'missing' || e.status === 'duplicate';
+  }).length;
+}
+
+// ── Generate ──────────────────────────────────────────────────────────────────
+
+generateBtn.addEventListener('click', function() {
+  var threshold = parseFloat(overtimeInput.value) || 8;
+  var results = parsedData.employees.map(function(emp) {
+    return calculateEmployeeHours(emp.name, emp.attendance, threshold);
+  });
+  renderResults(results);
+  showSection(resultsSection);
+});
+
+function renderResults(results) {
+  resultsBody.innerHTML = '';
+  results.forEach(function(r) {
+    var skipped = Object.values(r.dayStats).filter(function(d) {
+      return d.skipped && d.skipReason === 'missing_punch';
+    });
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + escHtml(r.name) + '</td>' +
+      '<td>' + fmt(r.totalHours) + '</td>' +
+      '<td>' + fmt(r.regularHours) + '</td>' +
+      '<td>' + fmt(r.overtimeHours) + '</td>' +
+      '<td>' + (skipped.length > 0
+        ? '<span class="warn-text">' + skipped.length + ' day(s) skipped (missing punch)</span>'
+        : '—') + '</td>';
+    resultsBody.appendChild(tr);
+  });
+}
+
+function fmt(hours) {
+  var h = Math.floor(hours);
+  var m = Math.round((hours - h) * 60);
+  return h + 'h ' + (m < 10 ? '0' : '') + m + 'm';
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+
+backBtn.addEventListener('click', function() { showSection(reviewSection); });
+changeFileBtn.addEventListener('click', function() {
+  parsedData = null; fileInput.value = ''; showSection(uploadSection);
+});
+newFileBtn.addEventListener('click', function() {
+  parsedData = null; fileInput.value = ''; showSection(uploadSection);
+});
+
+function showSection(section) {
+  [uploadSection, reviewSection, resultsSection].forEach(function(s) { s.hidden = true; });
+  section.hidden = false;
+  window.scrollTo(0, 0);
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+  </script>
+</body>
+</html>
