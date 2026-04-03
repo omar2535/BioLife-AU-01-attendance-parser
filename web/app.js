@@ -275,6 +275,8 @@ function onTimeChange(e) {
       entry.times = newTimes;
       entry.status = classifyTimesFromCount(newTimes.length);
       cell.className = `day-cell status-${entry.status}`;
+      const timesContainer = cell.querySelector('.day-times');
+      if (timesContainer) renderTimeInputs(timesContainer, entry, Number(empIdx), date);
     }
   } else {
     entry.times[Number(timeIdx)] = val;
