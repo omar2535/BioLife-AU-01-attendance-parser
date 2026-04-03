@@ -137,17 +137,23 @@ body {
 .day-cell.status-duplicate { background: var(--color-duplicate); border-color: var(--color-duplicate-bd); }
 .day-cell.status-empty     { background: var(--color-empty);     border-color: var(--color-empty-bd); }
 
-.day-label { font-weight: 600; margin-bottom: .35rem; font-size: .82rem; }
+.day-label { font-weight: 600; margin-bottom: .35rem; font-size: .82rem; display: flex; align-items: center; justify-content: space-between; }
 .day-times { display: flex; flex-direction: column; gap: .3rem; }
 .no-data { color: var(--color-muted); font-size: .8rem; }
 
 .time-row { display: flex; align-items: center; gap: .3rem; }
-.time-label { font-size: .72rem; color: var(--color-muted); width: 36px; flex-shrink: 0; }
+.time-label { font-size: .72rem; color: var(--color-muted); width: 28px; flex-shrink: 0; }
 .time-input { width: 60px; padding: .2rem .35rem; border: 1px solid var(--color-border); border-radius: 4px; font-size: .78rem; font-family: 'Courier New', monospace; }
 .time-input:focus { outline: 2px solid var(--color-primary); border-color: transparent; }
 
 .missing-hint   { font-size: .72rem; font-weight: 600; margin-bottom: .3rem; color: #c62828; }
 .duplicate-hint { font-size: .72rem; font-weight: 600; margin-bottom: .3rem; color: #e65100; }
+
+.add-entry-btn { background: none; border: 1px dashed var(--color-border); color: var(--color-muted); cursor: pointer; border-radius: 4px; font-size: .75rem; padding: .15rem .5rem; margin-top: .3rem; display: block; }
+.add-entry-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+.clear-entry-btn { background: none; border: none; color: var(--color-muted); cursor: pointer; font-size: .7rem; padding: 0; line-height: 1; opacity: .5; flex-shrink: 0; }
+.clear-entry-btn:hover { opacity: 1; color: #c62828; }
 
 .remove-btn { background: none; border: none; color: #c62828; cursor: pointer; font-size: .75rem; padding: 0 .2rem; line-height: 1; opacity: .7; }
 .remove-btn:hover { opacity: 1; }
@@ -167,6 +173,10 @@ th, td { text-align: left; padding: .65rem 1rem; border-bottom: 1px solid var(--
 th { background: #fafbff; font-weight: 600; font-size: .82rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: .03em; }
 tr:hover td { background: #fafbff; }
 .warn-text { color: #c62828; font-size: .82rem; }
+
+.copy-output-section { margin-bottom: 1.5rem; }
+.copy-output-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem; }
+.copy-textarea { width: 100%; height: 280px; font-family: 'Courier New', monospace; font-size: .82rem; padding: .75rem; border: 1px solid var(--color-border); border-radius: var(--radius); resize: vertical; background: #fafbff; color: var(--color-text); line-height: 1.6; }
 
 [hidden] { display: none !important; }
   </style>
@@ -264,8 +274,17 @@ tr:hover td { background: #fafbff; }
         </table>
       </div>
 
+      <div class="copy-output-section">
+        <div class="copy-output-header">
+          <span class="section-label">📋 Copy-able Summary</span>
+          <button id="copy-text-btn" class="btn btn-secondary">Copy</button>
+        </div>
+        <textarea id="copy-output" readonly class="copy-textarea"></textarea>
+      </div>
+
       <div class="action-bar">
         <button id="back-btn" class="btn btn-secondary">← Back to Review</button>
+        <button id="download-htm-btn" class="btn btn-secondary">⬇ Download Fixed HTM</button>
         <button id="new-file-btn" class="btn btn-secondary">📂 Load New File</button>
       </div>
     </section>
@@ -320,7 +339,7 @@ function parseEmployeeTable(table, dupThresholdMin) {
 
       var timeCell = timeCells[idx];
       if (!timeCell) {
-        employee.attendance[dateStr] = { times: [], status: 'empty' };
+        employee.attendance[dateStr] = { times: [], status: 'empty', originallyEmpty: true };
         return;
       }
 
@@ -335,7 +354,8 @@ function parseEmployeeTable(table, dupThresholdMin) {
       var status = classifyTimes(rawTimes, dupThresholdMin);
       employee.attendance[dateStr] = {
         times: rawTimes.filter(function(t) { return t !== ''; }),
-        status: status
+        status: status,
+        originallyEmpty: status === 'empty'
       };
     });
   }
@@ -424,6 +444,8 @@ function calculateEmployeeHours(name, attendance, overtimeThreshold) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 var parsedData = null;
+var originalHtml = null;
+var originalFileName = 'attendance_fixed.htm';
 
 var uploadSection   = document.getElementById('upload-section');
 var reviewSection   = document.getElementById('review-section');
@@ -456,10 +478,12 @@ fileInput.addEventListener('change', function() {
 });
 
 function processFile(file) {
+  originalFileName = file.name;
   var reader = new FileReader();
   reader.onload = function(e) {
     var dupThreshold = parseFloat(duplicateInput.value) || 10;
     try {
+      originalHtml = new TextDecoder('big5').decode(e.target.result);
       parsedData = parseAttendanceFile(e.target.result, dupThreshold);
       renderReview(parsedData);
       showSection(reviewSection);
@@ -502,6 +526,40 @@ function renderReview(data) {
   updateBanner(totalIssues, 'found');
 }
 
+function makeClearEntryBtn(entry, cell, label, timesContainer, empIdx, date) {
+  var btn = document.createElement('button');
+  btn.className = 'clear-entry-btn';
+  btn.title = 'Clear this day\'s entry';
+  btn.textContent = '✕';
+  btn.addEventListener('click', function() {
+    entry.times = [];
+    entry.status = 'empty';
+    entry.originallyEmpty = true;
+    cell.className = 'day-cell status-empty';
+    var existing = label.querySelector('.clear-entry-btn');
+    if (existing) existing.remove();
+    timesContainer.innerHTML = '<span class="no-data">—</span>';
+    timesContainer.appendChild(makeAddEntryBtn(entry, cell, label, timesContainer, empIdx, date));
+    refreshIssueBanner();
+  });
+  return btn;
+}
+
+function makeAddEntryBtn(entry, cell, label, timesContainer, empIdx, date) {
+  var btn = document.createElement('button');
+  btn.className = 'add-entry-btn';
+  btn.textContent = '+ Add';
+  btn.addEventListener('click', function() {
+    entry.originallyEmpty = false;
+    cell.className = 'day-cell status-empty';
+    renderTimeInputs(timesContainer, entry, empIdx, date);
+    if (!label.querySelector('.clear-entry-btn')) {
+      label.appendChild(makeClearEntryBtn(entry, cell, label, timesContainer, empIdx, date));
+    }
+  });
+  return btn;
+}
+
 function renderAttendanceGrid(container, attendance, empIdx) {
   Object.keys(attendance).forEach(function(date) {
     var entry = attendance[date];
@@ -510,17 +568,21 @@ function renderAttendanceGrid(container, attendance, empIdx) {
     cell.dataset.empIdx = empIdx;
     cell.dataset.date = date;
 
-    var label = document.createElement('div');
-    label.className = 'day-label';
-    label.textContent = date;
-
     var timesContainer = document.createElement('div');
     timesContainer.className = 'day-times';
 
-    if (entry.status === 'empty') {
+    var label = document.createElement('div');
+    label.className = 'day-label';
+    var dateSpan = document.createElement('span');
+    dateSpan.textContent = date;
+    label.appendChild(dateSpan);
+
+    if (entry.originallyEmpty && entry.times.length === 0) {
       timesContainer.innerHTML = '<span class="no-data">—</span>';
+      timesContainer.appendChild(makeAddEntryBtn(entry, cell, label, timesContainer, empIdx, date));
     } else {
       renderTimeInputs(timesContainer, entry, empIdx, date);
+      label.appendChild(makeClearEntryBtn(entry, cell, label, timesContainer, empIdx, date));
     }
 
     cell.appendChild(label);
@@ -532,14 +594,9 @@ function renderAttendanceGrid(container, attendance, empIdx) {
 function renderTimeInputs(container, entry, empIdx, date) {
   container.innerHTML = '';
 
-  if (entry.status === 'missing') {
-    var existingTime = entry.times[0];
-    var hint = document.createElement('div');
-    hint.className = 'missing-hint';
-    hint.textContent = '⚠ Missing punch';
-    container.appendChild(hint);
-
-    ['Clock-in', 'Clock-out'].forEach(function(labelText, idx) {
+  if (entry.times.length <= 1) {
+    // 0 or 1 time present: show labeled In/Out pair
+    ['In', 'Out'].forEach(function(labelText, idx) {
       var wrapper = document.createElement('div');
       wrapper.className = 'time-row';
 
@@ -551,7 +608,7 @@ function renderTimeInputs(container, entry, empIdx, date) {
       input.type = 'text';
       input.className = 'time-input';
       input.placeholder = 'HH:MM';
-      input.value = idx === 0 ? existingTime : '';
+      input.value = idx === 0 ? (entry.times[0] || '') : '';
       input.dataset.empIdx = empIdx;
       input.dataset.date = date;
       input.dataset.timeIdx = idx;
@@ -562,13 +619,7 @@ function renderTimeInputs(container, entry, empIdx, date) {
       container.appendChild(wrapper);
     });
   } else {
-    if (entry.status === 'duplicate') {
-      var dupHint = document.createElement('div');
-      dupHint.className = 'duplicate-hint';
-      dupHint.textContent = '⚠ ' + entry.times.length + ' punches — first = clock-in, last = clock-out';
-      container.appendChild(dupHint);
-    }
-
+    // 2+ times: normal or duplicate
     entry.times.forEach(function(time, idx) {
       var isFirst = idx === 0;
       var isLast  = idx === entry.times.length - 1;
@@ -633,7 +684,7 @@ function onTimeChange(e) {
 
   var cell = document.querySelector('.day-cell[data-emp-idx="' + empIdx + '"][data-date="' + date + '"]');
 
-  if (entry.status === 'missing') {
+  if (entry.times.length <= 1) {
     if (cell) {
       var inputs  = cell.querySelectorAll('.time-input');
       var newTimes = Array.prototype.map.call(inputs, function(i) { return i.value.trim(); }).filter(Boolean);
@@ -641,7 +692,10 @@ function onTimeChange(e) {
       entry.status = classifyTimesFromCount(newTimes.length);
       cell.className = 'day-cell status-' + entry.status;
       var timesContainer = cell.querySelector('.day-times');
-      if (timesContainer) renderTimeInputs(timesContainer, entry, Number(empIdx), date);
+      if (newTimes.length >= 2) {
+        // Transitioned to normal/duplicate — re-render in makeTimeRow format
+        if (timesContainer) renderTimeInputs(timesContainer, entry, Number(empIdx), date);
+      }
     }
   } else {
     entry.times[Number(e.target.dataset.timeIdx)] = e.target.value.trim();
@@ -702,6 +756,8 @@ generateBtn.addEventListener('click', function() {
 
 function renderResults(results) {
   resultsBody.innerHTML = '';
+  var textLines = [];
+
   results.forEach(function(r) {
     var skipped = Object.values(r.dayStats).filter(function(d) {
       return d.skipped && d.skipReason === 'missing_punch';
@@ -716,7 +772,16 @@ function renderResults(results) {
         ? '<span class="warn-text">' + skipped.length + ' day(s) skipped (missing punch)</span>'
         : '—') + '</td>';
     resultsBody.appendChild(tr);
+
+    textLines.push(
+      'Employee name: ' + r.name + '\n' +
+      'Total hours worked: ' + r.totalHours + '\n' +
+      'Overtime hours worked: ' + r.overtimeHours + '\n' +
+      'Regular hours worked: ' + r.regularHours
+    );
   });
+
+  document.getElementById('copy-output').value = textLines.join('\n\n\n');
 }
 
 function fmt(hours) {
@@ -745,6 +810,69 @@ function escHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+// ── Copy & Download ───────────────────────────────────────────────────────────
+
+document.getElementById('copy-text-btn').addEventListener('click', function() {
+  var ta = document.getElementById('copy-output');
+  ta.select();
+  var btn = document.getElementById('copy-text-btn');
+  navigator.clipboard.writeText(ta.value).then(function() {
+    btn.textContent = '✓ Copied!';
+    setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+  }).catch(function() {
+    document.execCommand('copy');
+    btn.textContent = '✓ Copied!';
+    setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+  });
+});
+
+document.getElementById('download-htm-btn').addEventListener('click', function() {
+  if (!originalHtml || !parsedData) return;
+
+  var parser = new DOMParser();
+  var doc = parser.parseFromString(originalHtml, 'text/html');
+  var tables = doc.querySelectorAll('table');
+
+  parsedData.employees.forEach(function(emp, empIdx) {
+    var table = tables[empIdx];
+    if (!table) return;
+
+    var rows = Array.prototype.slice.call(table.querySelectorAll('tr'), 1);
+    for (var i = 0; i + 1 < rows.length; i += 2) {
+      var dateRow = rows[i];
+      var timeRow = rows[i + 1];
+      if (!dateRow || !timeRow) continue;
+
+      var dateCells = Array.prototype.slice.call(dateRow.querySelectorAll('td'), 1);
+      var timeCells = Array.prototype.slice.call(timeRow.querySelectorAll('td'), 1);
+
+      dateCells.forEach(function(dateCell, idx) {
+        var dateStr = dateCell.textContent.replace(/\u00a0/g, ' ').trim();
+        if (!dateStr) return;
+
+        var entry = emp.attendance[dateStr];
+        if (!entry) return;
+
+        var timeCell = timeCells[idx];
+        if (!timeCell) return;
+
+        timeCell.innerHTML = entry.times.map(function(t) { return escHtml(t); }).join('<br>');
+      });
+    }
+  });
+
+  var fixedHtml = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  var blob = new Blob([fixedHtml], { type: 'text/html;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = originalFileName.replace(/\.[^.]+$/, '') + '_fixed.htm';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
   </script>
 </body>
 </html>

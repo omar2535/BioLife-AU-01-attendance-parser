@@ -105,7 +105,7 @@ function parseEmployeeTable(table, duplicateThresholdMinutes) {
 
       const timeCell = timeCells[idx];
       if (!timeCell) {
-        employee.attendance[dateStr] = { times: [], status: 'empty' };
+        employee.attendance[dateStr] = { times: [], status: 'empty', originallyEmpty: true };
         return;
       }
 
@@ -119,7 +119,7 @@ function parseEmployeeTable(table, duplicateThresholdMinutes) {
       });
 
       const status = classifyTimes(rawTimes, duplicateThresholdMinutes);
-      employee.attendance[dateStr] = { times: rawTimes.filter(t => t !== ''), status };
+      employee.attendance[dateStr] = { times: rawTimes.filter(t => t !== ''), status, originallyEmpty: status === 'empty' };
     });
   }
 

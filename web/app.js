@@ -11,6 +11,8 @@ import { calculateEmployeeHours } from './calculator.js';
 
 /** @type {{ title: string, companyName: string, dateRange: string, employees: any[] } | null} */
 let parsedData = null;
+let originalHtml = null;
+let originalFileName = 'attendance_fixed.htm';
 
 // ─── DOM References ───────────────────────────────────────────────────────────
 
@@ -50,9 +52,11 @@ fileInput.addEventListener('change', () => {
  * @param {File} file
  */
 async function processFile(file) {
+  originalFileName = file.name;
   const buffer = await file.arrayBuffer();
   const dupThreshold = parseFloat(duplicateInput.value) || 10;
   try {
+    originalHtml = new TextDecoder('big5').decode(buffer);
     parsedData = parseAttendanceFile(buffer, dupThreshold);
     renderReview(parsedData);
     showSection(reviewSection);
@@ -128,8 +132,17 @@ function renderAttendanceGrid(container, attendance, empIdx) {
     const timesContainer = document.createElement('div');
     timesContainer.className = 'day-times';
 
-    if (entry.status === 'empty') {
+    if (entry.originallyEmpty && entry.times.length === 0) {
       timesContainer.innerHTML = '<span class="no-data">—</span>';
+      const addBtn = document.createElement('button');
+      addBtn.className = 'add-entry-btn';
+      addBtn.textContent = '+ Add';
+      addBtn.addEventListener('click', () => {
+        entry.originallyEmpty = false;
+        cell.className = `day-cell status-empty`;
+        renderTimeInputs(timesContainer, entry, empIdx, date);
+      });
+      timesContainer.appendChild(addBtn);
     } else {
       renderTimeInputs(timesContainer, entry, empIdx, date);
     }
@@ -150,16 +163,14 @@ function renderAttendanceGrid(container, attendance, empIdx) {
 function renderTimeInputs(container, entry, empIdx, date) {
   container.innerHTML = '';
 
-  if (entry.status === 'missing') {
-    // 1 time present — show it + an empty input for the missing punch
-    const existingTime = entry.times[0];
-
-    // We don't know if the missing time is clock-in or clock-out,
-    // so show a hint label and let the user fill in the missing one.
-    const hint = document.createElement('div');
-    hint.className = 'missing-hint';
-    hint.textContent = '⚠ Missing punch';
-    container.appendChild(hint);
+  if (entry.times.length <= 1) {
+    // 0 or 1 time present: always show labeled In/Out pair
+    if (entry.times.length === 1) {
+      const hint = document.createElement('div');
+      hint.className = 'missing-hint';
+      hint.textContent = '⚠ Missing punch';
+      container.appendChild(hint);
+    }
 
     ['Clock-in', 'Clock-out'].forEach((label, idx) => {
       const wrapper = document.createElement('div');
@@ -173,8 +184,7 @@ function renderTimeInputs(container, entry, empIdx, date) {
       input.type = 'text';
       input.className = 'time-input';
       input.placeholder = 'HH:MM';
-      // Pre-fill with the one existing time, leaving the other blank for user to fill
-      input.value = idx === 0 ? existingTime : '';
+      input.value = idx === 0 ? (entry.times[0] || '') : '';
       input.dataset.empIdx = empIdx;
       input.dataset.date = date;
       input.dataset.timeIdx = idx;
@@ -185,17 +195,17 @@ function renderTimeInputs(container, entry, empIdx, date) {
       container.appendChild(wrapper);
     });
   } else {
-    // normal or duplicate: show all times as editable inputs + add/remove buttons
-    entry.times.forEach((time, idx) => {
-      container.appendChild(makeTimeRow(time, idx, idx === 0, idx === entry.times.length - 1, empIdx, date, entry));
-    });
-
+    // 2+ times: normal or duplicate
     if (entry.status === 'duplicate') {
       const dupHint = document.createElement('div');
       dupHint.className = 'duplicate-hint';
       dupHint.textContent = `⚠ ${entry.times.length} punches — first used as clock-in, last as clock-out`;
-      container.insertBefore(dupHint, container.firstChild);
+      container.appendChild(dupHint);
     }
+
+    entry.times.forEach((time, idx) => {
+      container.appendChild(makeTimeRow(time, idx, idx === 0, idx === entry.times.length - 1, empIdx, date, entry));
+    });
   }
 }
 
@@ -264,7 +274,7 @@ function onTimeChange(e) {
   const entry = parsedData.employees[Number(empIdx)].attendance[date];
   const val = e.target.value.trim();
 
-  if (entry.status === 'missing') {
+  if (entry.times.length <= 1) {
     // Rebuild times array from the two inputs in this cell
     const cell = document.querySelector(
       `.day-cell[data-emp-idx="${empIdx}"][data-date="${date}"]`
@@ -341,6 +351,7 @@ generateBtn.addEventListener('click', () => {
  */
 function renderResults(results) {
   resultsBody.innerHTML = '';
+  const textLines = [];
 
   results.forEach(r => {
     const skippedDays = Object.values(r.dayStats).filter(d => d.skipped && d.skipReason === 'missing_punch');
@@ -355,7 +366,17 @@ function renderResults(results) {
         : '—'}</td>
     `;
     resultsBody.appendChild(tr);
+
+    textLines.push(
+      `Employee name: ${r.name}\n` +
+      `Total hours worked: ${r.totalHours}\n` +
+      `Overtime hours worked: ${r.overtimeHours}\n` +
+      `Regular hours worked: ${r.regularHours}`
+    );
   });
+
+  const copyOutput = document.getElementById('copy-output');
+  if (copyOutput) copyOutput.value = textLines.join('\n\n\n');
 }
 
 /** Formats a fractional hours number as "Xh Ym". */
@@ -394,3 +415,67 @@ function escHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+// ─── Copy & Download ──────────────────────────────────────────────────────────
+
+document.getElementById('copy-text-btn')?.addEventListener('click', () => {
+  const ta = document.getElementById('copy-output');
+  if (!ta) return;
+  ta.select();
+  const btn = document.getElementById('copy-text-btn');
+  navigator.clipboard.writeText(ta.value).then(() => {
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  }).catch(() => {
+    document.execCommand('copy');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  });
+});
+
+document.getElementById('download-htm-btn')?.addEventListener('click', () => {
+  if (!originalHtml || !parsedData) return;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(originalHtml, 'text/html');
+  const tables = doc.querySelectorAll('table');
+
+  parsedData.employees.forEach((emp, empIdx) => {
+    const table = tables[empIdx];
+    if (!table) return;
+
+    const rows = Array.from(table.querySelectorAll('tr')).slice(1);
+    for (let i = 0; i + 1 < rows.length; i += 2) {
+      const dateRow = rows[i];
+      const timeRow = rows[i + 1];
+      if (!dateRow || !timeRow) continue;
+
+      const dateCells = Array.from(dateRow.querySelectorAll('td')).slice(1);
+      const timeCells = Array.from(timeRow.querySelectorAll('td')).slice(1);
+
+      dateCells.forEach((dateCell, idx) => {
+        const dateStr = dateCell.textContent.replace(/\u00a0/g, ' ').trim();
+        if (!dateStr) return;
+
+        const entry = emp.attendance[dateStr];
+        if (!entry) return;
+
+        const timeCell = timeCells[idx];
+        if (!timeCell) return;
+
+        timeCell.innerHTML = entry.times.map(t => escHtml(t)).join('<br>');
+      });
+    }
+  });
+
+  const fixedHtml = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  const blob = new Blob([fixedHtml], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = originalFileName.replace(/\.[^.]+$/, '') + '_fixed.htm';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
