@@ -49,8 +49,11 @@ body {
   top: 0;
   z-index: 10;
 }
-.page-header .logo { font-weight: 700; font-size: 1.05rem; color: var(--color-primary); }
+.page-header .logo { font-weight: 700; font-size: 1.05rem; color: var(--color-primary); cursor: pointer; }
+.page-header .logo:hover { opacity: .8; }
 .page-header .subtitle { font-size: .85rem; color: var(--color-muted); }
+.lang-toggle { margin-left: auto; background: none; border: 1px solid var(--color-border); border-radius: var(--radius); padding: .25rem .75rem; font-size: .82rem; font-weight: 600; cursor: pointer; color: var(--color-text); flex-shrink: 0; }
+.lang-toggle:hover { background: var(--color-bg); }
 
 .main-content {
   max-width: 1100px;
@@ -184,8 +187,9 @@ tr:hover td { background: #fafbff; }
 <body>
 
   <header class="page-header">
-    <span class="logo">🗂 Attendance Parser</span>
-    <span class="subtitle">Fingerprint clock-in timesheet processor</span>
+    <span class="logo" id="logo-btn" data-i18n="logoText">🗂 Attendance Parser</span>
+    <span class="subtitle" data-i18n="subtitle">Fingerprint clock-in timesheet processor</span>
+    <button class="lang-toggle" id="lang-toggle">中文</button>
   </header>
 
   <main class="main-content">
@@ -196,29 +200,29 @@ tr:hover td { background: #fafbff; }
 
         <label id="drop-zone" for="file-input">
           <div class="drop-icon">📂</div>
-          <div class="drop-title">Drop your .htm file here</div>
-          <div class="drop-sub">or click to browse</div>
+          <div class="drop-title" data-i18n="dropTitle">Drop your .htm file here</div>
+          <div class="drop-sub" data-i18n="dropSub">or click to browse</div>
         </label>
         <input type="file" id="file-input" accept=".htm,.html"
                style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" />
 
         <div class="config-panel">
-          <h3>⚙ Configuration</h3>
+          <h3 data-i18n="configTitle">⚙ Configuration</h3>
 
           <div class="config-row">
-            <label for="overtime-threshold">Overtime threshold (hours/day)</label>
+            <label for="overtime-threshold" data-i18n="overtimeLabel">Overtime threshold (hours/day)</label>
             <input type="number" id="overtime-threshold" value="8" min="0" max="24" step="0.5" />
           </div>
-          <p class="config-note">Hours worked beyond this threshold count as overtime.<br />Default: <strong>8h</strong> (matches the original script).</p>
+          <p class="config-note" data-i18n-html="overtimeNote">Hours worked beyond this threshold count as overtime.<br />Default: <strong>8h</strong> (matches the original script).</p>
 
           <div class="config-row">
-            <label for="duplicate-threshold">Duplicate punch threshold (minutes)</label>
+            <label for="duplicate-threshold" data-i18n="duplicateLabel">Duplicate punch threshold (minutes)</label>
             <input type="number" id="duplicate-threshold" value="10" min="1" max="60" step="1" />
           </div>
-          <p class="config-note">If 2 time entries are within this many minutes of each other they are flagged as duplicates (e.g. two clock-ins with no clock-out).<br />Default: <strong>10 min</strong>.</p>
+          <p class="config-note" data-i18n-html="duplicateNote">If 2 time entries are within this many minutes of each other they are flagged as duplicates (e.g. two clock-ins with no clock-out).<br />Default: <strong>10 min</strong>.</p>
 
           <hr style="border:none;border-top:1px solid var(--color-border);margin:.75rem 0" />
-          <p class="config-note">
+          <p class="config-note" data-i18n-html="interpretNote">
             <strong>How time entries are interpreted:</strong><br />
             • <strong>0 entries</strong> — day off, skipped<br />
             • <strong>1 entry</strong> — missing clock-in <em>or</em> clock-out, flagged<br />
@@ -233,41 +237,41 @@ tr:hover td { background: #fafbff; }
 
     <!-- ── Review Section ──────────────────────────────────────────────────── -->
     <section id="review-section" hidden>
-      <h2 class="section-title">Review Attendance Data</h2>
-      <p class="section-sub">Check highlighted entries. Fill in missing times or remove duplicate punches, then click <strong>Generate</strong>.</p>
+      <h2 class="section-title" data-i18n="reviewTitle">Review Attendance Data</h2>
+      <p class="section-sub" data-i18n-html="reviewSub">Check highlighted entries. Fill in missing times or remove duplicate punches, then click <strong>Generate</strong>.</p>
 
       <div id="review-meta"></div>
 
       <div class="legend">
-        <span class="legend-item"><span class="legend-dot normal"></span>Normal</span>
-        <span class="legend-item"><span class="legend-dot missing"></span>Missing punch</span>
-        <span class="legend-item"><span class="legend-dot duplicate"></span>Duplicate punches</span>
-        <span class="legend-item"><span class="legend-dot empty"></span>Day off</span>
+        <span class="legend-item"><span class="legend-dot normal"></span><span data-i18n="legendNormal">Normal</span></span>
+        <span class="legend-item"><span class="legend-dot missing"></span><span data-i18n="legendMissing">Missing punch</span></span>
+        <span class="legend-item"><span class="legend-dot duplicate"></span><span data-i18n="legendDuplicate">Duplicate punches</span></span>
+        <span class="legend-item"><span class="legend-dot empty"></span><span data-i18n="legendEmpty">Day off</span></span>
       </div>
 
       <div id="issue-banner" class="banner banner-ok"></div>
       <div id="review-container"></div>
 
       <div class="action-bar">
-        <button id="change-file-btn" class="btn btn-secondary">← Change File</button>
-        <button id="generate-btn" class="btn btn-primary">⚡ Generate Totals</button>
+        <button id="change-file-btn" class="btn btn-secondary" data-i18n="changeFile">← Change File</button>
+        <button id="generate-btn" class="btn btn-primary" data-i18n="generate">⚡ Generate Totals</button>
       </div>
     </section>
 
     <!-- ── Results Section ──────────────────────────────────────────────────── -->
     <section id="results-section" hidden>
-      <h2 class="section-title">Results</h2>
-      <p class="section-sub">Hours calculated per employee based on reviewed attendance data.</p>
+      <h2 class="section-title" data-i18n="resultsTitle">Results</h2>
+      <p class="section-sub" data-i18n="resultsSub">Hours calculated per employee based on reviewed attendance data.</p>
 
       <div class="results-table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Employee</th>
-              <th>Total Hours</th>
-              <th>Regular Hours</th>
-              <th>Overtime Hours</th>
-              <th>Notes</th>
+              <th data-i18n="colEmployee">Employee</th>
+              <th data-i18n="colTotal">Total Hours</th>
+              <th data-i18n="colRegular">Regular Hours</th>
+              <th data-i18n="colOvertime">Overtime Hours</th>
+              <th data-i18n="colNotes">Notes</th>
             </tr>
           </thead>
           <tbody id="results-body"></tbody>
@@ -276,16 +280,16 @@ tr:hover td { background: #fafbff; }
 
       <div class="copy-output-section">
         <div class="copy-output-header">
-          <span class="section-label">📋 Copy-able Summary</span>
-          <button id="copy-text-btn" class="btn btn-secondary">Copy</button>
+          <span class="section-label" data-i18n="copyLabel">📋 Copy-able Summary</span>
+          <button id="copy-text-btn" class="btn btn-secondary" data-i18n="copyBtn">Copy</button>
         </div>
         <textarea id="copy-output" readonly class="copy-textarea"></textarea>
       </div>
 
       <div class="action-bar">
-        <button id="back-btn" class="btn btn-secondary">← Back to Review</button>
-        <button id="download-htm-btn" class="btn btn-secondary">⬇ Download Fixed HTM</button>
-        <button id="new-file-btn" class="btn btn-secondary">📂 Load New File</button>
+        <button id="back-btn" class="btn btn-secondary" data-i18n="backReview">← Back to Review</button>
+        <button id="download-htm-btn" class="btn btn-secondary" data-i18n="downloadHtm">⬇ Download Fixed HTM</button>
+        <button id="new-file-btn" class="btn btn-secondary" data-i18n="loadNew">📂 Load New File</button>
       </div>
     </section>
 
@@ -448,6 +452,123 @@ var originalHtml = null;
 var originalBuffer = null;
 var originalFileName = 'attendance_fixed.htm';
 
+// ── i18n ──────────────────────────────────────────────────────────────────────
+
+var TRANSLATIONS = {
+  en: {
+    logoText: '🗂 Attendance Parser',
+    subtitle: 'Fingerprint clock-in timesheet processor',
+    langToggle: '中文',
+    dropTitle: 'Drop your .htm file here',
+    dropSub: 'or click to browse',
+    configTitle: '⚙ Configuration',
+    overtimeLabel: 'Overtime threshold (hours/day)',
+    overtimeNote: 'Hours worked beyond this threshold count as overtime.<br />Default: <strong>8h</strong> (matches the original script).',
+    duplicateLabel: 'Duplicate punch threshold (minutes)',
+    duplicateNote: 'If 2 time entries are within this many minutes of each other they are flagged as duplicates (e.g. two clock-ins with no clock-out).<br />Default: <strong>10 min</strong>.',
+    interpretNote: '<strong>How time entries are interpreted:</strong><br />• <strong>0 entries</strong> — day off, skipped<br />• <strong>1 entry</strong> — missing clock-in <em>or</em> clock-out, flagged<br />• <strong>2 entries (far apart)</strong> — normal (first = clock-in, last = clock-out)<br />• <strong>2 entries (close together)</strong> — duplicate scans, flagged<br />• <strong>3+ entries</strong> — duplicate scans, flagged; first = clock-in, last = clock-out',
+    reviewTitle: 'Review Attendance Data',
+    reviewSub: 'Check highlighted entries. Fill in missing times or remove duplicate punches, then click <strong>Generate</strong>.',
+    legendNormal: 'Normal',
+    legendMissing: 'Missing punch',
+    legendDuplicate: 'Duplicate punches',
+    legendEmpty: 'Day off',
+    changeFile: '← Change File',
+    generate: '⚡ Generate Totals',
+    resultsTitle: 'Results',
+    resultsSub: 'Hours calculated per employee based on reviewed attendance data.',
+    colEmployee: 'Employee',
+    colTotal: 'Total Hours',
+    colRegular: 'Regular Hours',
+    colOvertime: 'Overtime Hours',
+    colNotes: 'Notes',
+    copyLabel: '📋 Copy-able Summary',
+    copyBtn: 'Copy',
+    copiedBtn: '✓ Copied!',
+    backReview: '← Back to Review',
+    downloadHtm: '⬇ Download Fixed HTM',
+    loadNew: '📂 Load New File',
+    issueFound: function(n) { return '⚠ ' + n + ' issue' + (n > 1 ? 's' : '') + ' found — please review highlighted entries before generating.'; },
+    issueRemaining: function(n) { return '⚠ ' + n + ' issue' + (n > 1 ? 's' : '') + ' remaining — please review before generating.'; },
+    noIssues: '✓ No issues. Ready to generate.',
+    issueBadge: function(n) { return n + ' issue' + (n > 1 ? 's' : ''); },
+    okBadge: '✓ OK',
+    skippedDays: function(n) { return n + ' day' + (n > 1 ? 's' : '') + ' skipped (missing punch)'; },
+    addEntry: '+ Add',
+    clearEntry: "Clear this day's entry",
+  },
+  zh: {
+    logoText: '🗂 出勤記錄解析器',
+    subtitle: '指紋打卡考勤處理系統',
+    langToggle: 'English',
+    dropTitle: '將 .htm 檔案拖曳到此處',
+    dropSub: '或點擊選擇檔案',
+    configTitle: '⚙ 設定',
+    overtimeLabel: '加班門檻（小時／天）',
+    overtimeNote: '超過此門檻的工時計為加班。<br />預設：<strong>8 小時</strong>（與原始腳本一致）。',
+    duplicateLabel: '重複打卡門檻（分鐘）',
+    duplicateNote: '若兩筆打卡紀錄相差不超過此分鐘數，則標記為重複打卡。<br />預設：<strong>10 分鐘</strong>。',
+    interpretNote: '<strong>打卡紀錄判斷方式：</strong><br />• <strong>0 筆</strong> — 休假，略過<br />• <strong>1 筆</strong> — 缺少上班<em>或</em>下班打卡，標記<br />• <strong>2 筆（時間差大）</strong> — 正常（第一筆＝上班，最後一筆＝下班）<br />• <strong>2 筆（時間差小）</strong> — 重複打卡，標記<br />• <strong>3 筆以上</strong> — 重複打卡，標記；第一筆＝上班，最後一筆＝下班',
+    reviewTitle: '檢閱出勤資料',
+    reviewSub: '檢查標記的紀錄，填入缺少的時間或移除重複打卡，完成後點擊<strong>產生報表</strong>。',
+    legendNormal: '正常',
+    legendMissing: '缺少打卡',
+    legendDuplicate: '重複打卡',
+    legendEmpty: '休假',
+    changeFile: '← 更換檔案',
+    generate: '⚡ 產生報表',
+    resultsTitle: '結果',
+    resultsSub: '根據審查的出勤資料計算每位員工的工時。',
+    colEmployee: '員工',
+    colTotal: '總工時',
+    colRegular: '正常工時',
+    colOvertime: '加班工時',
+    colNotes: '備註',
+    copyLabel: '📋 可複製摘要',
+    copyBtn: '複製',
+    copiedBtn: '✓ 已複製！',
+    backReview: '← 返回審閱',
+    downloadHtm: '⬇ 下載修正版 HTM',
+    loadNew: '📂 載入新檔案',
+    issueFound: function(n) { return '⚠ 發現 ' + n + ' 個問題，請在產生前審閱標記的紀錄。'; },
+    issueRemaining: function(n) { return '⚠ 剩餘 ' + n + ' 個問題，請在產生前審閱。'; },
+    noIssues: '✓ 無問題，可以產生報表。',
+    issueBadge: function(n) { return n + ' 個問題'; },
+    okBadge: '✓ 正常',
+    skippedDays: function(n) { return '略過 ' + n + ' 天（缺少打卡）'; },
+    addEntry: '+ 新增',
+    clearEntry: '清除此日紀錄',
+  }
+};
+
+var currentLang = localStorage.getItem('lang') || 'en';
+
+function t(key) {
+  var val = TRANSLATIONS[currentLang][key];
+  if (val === undefined) val = TRANSLATIONS['en'][key];
+  if (val === undefined) return key;
+  if (typeof val === 'function') {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return val.apply(null, args);
+  }
+  return val;
+}
+
+function setLanguage(lang) {
+  currentLang = lang;
+  localStorage.setItem('lang', lang);
+  var tr = TRANSLATIONS[lang];
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n');
+    if (tr[key] !== undefined && typeof tr[key] === 'string') el.textContent = tr[key];
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n-html');
+    if (tr[key] !== undefined) el.innerHTML = tr[key];
+  });
+  document.getElementById('lang-toggle').textContent = tr['langToggle'];
+}
+
 var uploadSection   = document.getElementById('upload-section');
 var reviewSection   = document.getElementById('review-section');
 var resultsSection  = document.getElementById('results-section');
@@ -517,8 +638,8 @@ function renderReview(data) {
       '<div class="employee-header">' +
         '<span class="employee-name">' + escHtml(employee.name) + '</span>' +
         (issues > 0
-          ? '<span class="issue-badge">' + issues + ' issue' + (issues > 1 ? 's' : '') + '</span>'
-          : '<span class="ok-badge">✓ OK</span>') +
+          ? '<span class="issue-badge">' + t('issueBadge', issues) + '</span>'
+          : '<span class="ok-badge">' + t('okBadge') + '</span>') +
       '</div>' +
       '<div class="attendance-grid" id="grid-' + empIdx + '"></div>';
     reviewContainer.appendChild(card);
@@ -531,7 +652,7 @@ function renderReview(data) {
 function makeClearEntryBtn(entry, cell, label, timesContainer, empIdx, date) {
   var btn = document.createElement('button');
   btn.className = 'clear-entry-btn';
-  btn.title = 'Clear this day\'s entry';
+  btn.title = t('clearEntry');
   btn.textContent = '✕';
   btn.addEventListener('click', function() {
     entry.times = [];
@@ -550,7 +671,7 @@ function makeClearEntryBtn(entry, cell, label, timesContainer, empIdx, date) {
 function makeAddEntryBtn(entry, cell, label, timesContainer, empIdx, date) {
   var btn = document.createElement('button');
   btn.className = 'add-entry-btn';
-  btn.textContent = '+ Add';
+  btn.textContent = t('addEntry');
   btn.addEventListener('click', function() {
     entry.originallyEmpty = false;
     cell.className = 'day-cell status-empty';
@@ -719,10 +840,10 @@ function refreshIssueBanner() {
     if (badge) {
       if (issues > 0) {
         badge.className   = 'issue-badge';
-        badge.textContent = issues + ' issue' + (issues > 1 ? 's' : '');
+        badge.textContent = t('issueBadge', issues);
       } else {
         badge.className   = 'ok-badge';
-        badge.textContent = '✓ OK';
+        badge.textContent = t('okBadge');
       }
     }
   });
@@ -731,10 +852,10 @@ function refreshIssueBanner() {
 
 function updateBanner(count, word) {
   if (count > 0) {
-    issueBanner.textContent = '⚠ ' + count + ' issue' + (count > 1 ? 's' : '') + ' ' + word + ' — please review highlighted entries before generating.';
+    issueBanner.textContent = word === 'found' ? t('issueFound', count) : t('issueRemaining', count);
     issueBanner.className = 'banner banner-warning';
   } else {
-    issueBanner.textContent = '✓ No issues. Ready to generate.';
+    issueBanner.textContent = t('noIssues');
     issueBanner.className = 'banner banner-ok';
   }
 }
@@ -771,7 +892,7 @@ function renderResults(results) {
       '<td>' + fmt(r.regularHours) + '</td>' +
       '<td>' + fmt(r.overtimeHours) + '</td>' +
       '<td>' + (skipped.length > 0
-        ? '<span class="warn-text">' + skipped.length + ' day(s) skipped (missing punch)</span>'
+        ? '<span class="warn-text">' + t('skippedDays', skipped.length) + '</span>'
         : '—') + '</td>';
     resultsBody.appendChild(tr);
 
@@ -859,12 +980,12 @@ document.getElementById('copy-text-btn').addEventListener('click', function() {
   ta.select();
   var btn = document.getElementById('copy-text-btn');
   navigator.clipboard.writeText(ta.value).then(function() {
-    btn.textContent = '✓ Copied!';
-    setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+    btn.textContent = t('copiedBtn');
+    setTimeout(function() { btn.textContent = t('copyBtn'); }, 2000);
   }).catch(function() {
     document.execCommand('copy');
-    btn.textContent = '✓ Copied!';
-    setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+    btn.textContent = t('copiedBtn');
+    setTimeout(function() { btn.textContent = t('copyBtn'); }, 2000);
   });
 });
 
@@ -916,6 +1037,21 @@ document.getElementById('download-htm-btn').addEventListener('click', function()
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 });
+
+// ── Logo & Language toggle ────────────────────────────────────────────────────
+
+document.getElementById('logo-btn').addEventListener('click', function() {
+  parsedData = null; originalHtml = null; originalBuffer = null;
+  fileInput.value = '';
+  showSection(uploadSection);
+});
+
+document.getElementById('lang-toggle').addEventListener('click', function() {
+  setLanguage(currentLang === 'en' ? 'zh' : 'en');
+});
+
+// Apply saved/default language on init
+setLanguage(currentLang);
   </script>
 </body>
 </html>
