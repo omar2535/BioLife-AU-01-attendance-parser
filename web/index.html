@@ -249,8 +249,8 @@ tr:hover td { background: #fafbff; }
       <div id="review-container"></div>
 
       <div class="action-bar">
-        <button id="generate-btn" class="btn btn-primary">⚡ Generate Totals</button>
         <button id="change-file-btn" class="btn btn-secondary">← Change File</button>
+        <button id="generate-btn" class="btn btn-primary">⚡ Generate Totals</button>
       </div>
     </section>
 
@@ -445,6 +445,7 @@ function calculateEmployeeHours(name, attendance, overtimeThreshold) {
 
 var parsedData = null;
 var originalHtml = null;
+var originalBuffer = null;
 var originalFileName = 'attendance_fixed.htm';
 
 var uploadSection   = document.getElementById('upload-section');
@@ -484,6 +485,7 @@ function processFile(file) {
     var dupThreshold = parseFloat(duplicateInput.value) || 10;
     try {
       originalHtml = new TextDecoder('big5').decode(e.target.result);
+      originalBuffer = e.target.result;
       parsedData = parseAttendanceFile(e.target.result, dupThreshold);
       renderReview(parsedData);
       showSection(reviewSection);
@@ -811,6 +813,45 @@ function escHtml(str) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// ── BIG5 re-encoding ─────────────────────────────────────────────────────────
+// Build a reverse map (Unicode char → BIG5 bytes) by walking the original
+// buffer alongside the decoded string — no lookup table required.
+function buildBig5EncodeMap(buffer, decodedStr) {
+  var bytes = new Uint8Array(buffer);
+  var map = {};
+  var bi = 0, si = 0;
+  while (bi < bytes.length && si < decodedStr.length) {
+    var b = bytes[bi];
+    var ch = decodedStr[si];
+    if (b < 0x80) {
+      map[ch] = [b];
+      bi += 1;
+    } else {
+      map[ch] = [b, bytes[bi + 1]];
+      bi += 2;
+    }
+    si++;
+  }
+  return map;
+}
+
+function encodeStringToBig5(str, encodeMap) {
+  var out = [];
+  for (var i = 0; i < str.length; i++) {
+    var ch = str[i];
+    var code = ch.charCodeAt(0);
+    if (code < 0x80) {
+      out.push(code);
+    } else if (encodeMap[ch]) {
+      out.push(encodeMap[ch][0]);
+      if (encodeMap[ch][1] !== undefined) out.push(encodeMap[ch][1]);
+    } else {
+      out.push(0x3F); // '?' for any char not in the original file
+    }
+  }
+  return new Uint8Array(out);
+}
+
 // ── Copy & Download ───────────────────────────────────────────────────────────
 
 document.getElementById('copy-text-btn').addEventListener('click', function() {
@@ -863,7 +904,9 @@ document.getElementById('download-htm-btn').addEventListener('click', function()
   });
 
   var fixedHtml = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
-  var blob = new Blob([fixedHtml], { type: 'text/html;charset=utf-8' });
+  var encodeMap = buildBig5EncodeMap(originalBuffer, originalHtml);
+  var fixedBytes = encodeStringToBig5(fixedHtml, encodeMap);
+  var blob = new Blob([fixedBytes], { type: 'text/html;charset=big5' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
